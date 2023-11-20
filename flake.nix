@@ -28,7 +28,7 @@
         inherit version;
         src = ./caddy-src;
         runVend = true;
-        vendorSha256 = "sha256-b8S1yiTdlyuqYsYAiFFwHgZWKCJG7D4JLlHVLhtZEjg=";
+        vendorSha256 = "sha256-fgr64f1wOreFrMTAMnYTkaqAfrcG0tme4J3YVawoks0=";
         # vendorSha256 = pkgs.lib.fakeSha256;
       };
     });
