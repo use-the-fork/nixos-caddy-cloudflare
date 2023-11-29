@@ -1,9 +1,9 @@
 {
-  description = "Caddy with Cloudflare plugin";
+  description = "Caddy with Cloudflare plugin and expanded module";
 
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/*.tar.gz";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-  outputs = {
+  outputs = inputs @ {
     self,
     nixpkgs,
   }: let
@@ -31,8 +31,9 @@
         vendorSha256 = "sha256-fgr64f1wOreFrMTAMnYTkaqAfrcG0tme4J3YVawoks0=";
         # vendorSha256 = pkgs.lib.fakeSha256;
       };
+      default = self.packages.${system}.caddy;
     });
 
-    defaultPackage = forAllSystems (system: self.packages.${system}.caddy);
+    nixosModules.default = import ./nix inputs;
   };
 }
