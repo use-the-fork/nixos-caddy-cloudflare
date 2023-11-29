@@ -64,12 +64,12 @@ in
       '';
     };
 
-    extraConfig = mkOption {
-      type = types.lines;
-      default = "";
+    reverseProxy = mkOption {
+      type = types.nullOr types.str;
+      default = null;
       description = lib.mdDoc ''
-        Additional lines of configuration appended to this virtual host in the
-        automatically generated `Caddyfile`.
+        Option to give the parameters to a simple "reverse_proxy" command
+        appended after extraConfig.
       '';
     };
 
@@ -85,6 +85,15 @@ in
       '';
       description = lib.mdDoc ''
         Declarative specification of a virtual hosts subdomain served by Caddy.
+      '';
+    };
+
+    extraConfig = mkOption {
+      type = types.lines;
+      default = "";
+      description = lib.mdDoc ''
+        Additional lines of configuration appended to this virtual host in the
+        automatically generated `Caddyfile`.
       '';
     };
 

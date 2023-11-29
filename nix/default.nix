@@ -20,6 +20,7 @@ let
           @${subOpts.name} host ${subOpts.name}.${hostName}
 	        handle @${subOpts.name} {
 	          ${subOpts.extraConfig}
+            ${optionalString (subOpts.reverseProxy != null) "reverse_proxy ${subOpts.reverseProxy}"}
 	        }
         '';
     in
@@ -32,6 +33,7 @@ let
           }
 
           ${hostOpts.extraConfig}
+          ${optionalString (hostOpts.reverseProxy != null) "reverse_proxy ${hostOpts.reverseProxy}"}
           ${concatMapStringsSep "\n" mkSubConf subDomains}
         }
       '';

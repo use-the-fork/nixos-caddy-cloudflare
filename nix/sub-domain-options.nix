@@ -11,6 +11,15 @@ in {
       description = lib.mdDoc "The sub domain name to handle.";
     };
 
+    reverseProxy = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = lib.mdDoc ''
+        Option to give the parameters to a simple "reverse_proxy" command
+        appended after extraConfig.
+      '';
+    };
+
     extraConfig = mkOption {
       type = types.lines;
       default = "";
