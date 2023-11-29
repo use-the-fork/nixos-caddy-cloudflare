@@ -11,6 +11,17 @@ let
   mkVHostConf = hostOpts:
     let
       sslCertDir = config.security.acme.certs.${hostOpts.useACMEHost}.directory;
+      subDomains = (attrValues hostOpts.subDomains);
+
+      mkSubConf = let
+        hostName = hostOpts.hostName;
+      in subOpts:
+        ''
+          @${subOpts.name} host ${subOpts.name}.${hostName}
+	        handle @${subOpts.name} {
+	          ${subOpts.extraConfig}
+	        }
+        '';
     in
       ''
         ${hostOpts.hostName} ${concatStringsSep " " hostOpts.serverAliases} {
@@ -21,6 +32,7 @@ let
           }
 
           ${hostOpts.extraConfig}
+          ${concatMapStringsSep "\n" mkSubConf subDomains}
         }
       '';
 

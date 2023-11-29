@@ -73,9 +73,20 @@ in
       '';
     };
 
-    #subDomain = mkOptio {
-      #type
-    #};
+    subDomains = mkOption {
+      type = with types; attrsOf (submodule (import ./sub-domain-options.nix { inherit cfg; }));
+      default = {};
+      example = literalExpression ''
+        {
+          headscale.extraConfig = '''
+            reverse_proxy localhost:8085
+          ''';
+        };
+      '';
+      description = lib.mdDoc ''
+        Declarative specification of a virtual hosts subdomain served by Caddy.
+      '';
+    };
 
   };
 }
