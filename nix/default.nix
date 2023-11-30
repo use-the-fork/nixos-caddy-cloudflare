@@ -1,65 +1,93 @@
-inputs: { config, lib, pkgs, ... }:
-
-with lib;
-
-let
+inputs: {
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
   cfg = config.services.caddy;
+  acmeVHosts = filter (hostOpts: hostOpts.useACMEHost != null) (attrValues cfg.virtualHosts);
 
-  virtualHosts = attrValues cfg.virtualHosts;
-  acmeVHosts = filter (hostOpts: hostOpts.useACMEHost != null) virtualHosts;
+  capitalize = str:
+    toUpper (substring 0 1 str)
+    + substring 1 (stringLength str) str;
 
-  mkVHostConf = hostOpts:
-    let
-      sslCertDir = config.security.acme.certs.${hostOpts.useACMEHost}.directory;
-      subDomains = (attrValues hostOpts.subDomains);
+  mkSubDirConf = subOpts:
+    optionalString (subOpts.reverseProxy != null) (
+      if subOpts.experimental
+      then ''
+        ${subOpts.extraConfig}
 
-      mkSubConf = let
-        hostName = hostOpts.hostName;
-      in subOpts:
-        ''
-          @${subOpts.name} host ${subOpts.name}.${hostName}
-	        handle @${subOpts.name} {
-	          ${subOpts.extraConfig}
-            ${optionalString (subOpts.reverseProxy != null) "reverse_proxy ${subOpts.reverseProxy}"}
-	        }
-        '';
-    in
-      ''
-        ${hostOpts.hostName} ${concatStringsSep " " hostOpts.serverAliases} {
-          ${optionalString (hostOpts.listenAddresses != [ ]) "bind ${concatStringsSep " " hostOpts.listenAddresses}"}
-          ${optionalString (hostOpts.useACMEHost != null) "tls ${sslCertDir}/cert.pem ${sslCertDir}/key.pem"}
-          log {
-            ${hostOpts.logFormat}
+        redir /${subOpts.subDirName} /${subOpts.subDirName}/
+        route /${subOpts.subDirName}/* {
+          uri strip_prefix ${subOpts.subDirName}
+          reverse_proxy ${subOpts.reverseProxy} {
+            header_up X-Real-IP {remote}
+            header_up X-${capitalize (subOpts.subDirName)}-Base "/${subOpts.subDirName}"
           }
-
-          ${hostOpts.extraConfig}
-          ${optionalString (hostOpts.reverseProxy != null) "reverse_proxy ${hostOpts.reverseProxy}"}
-          ${concatMapStringsSep "\n" mkSubConf subDomains}
         }
-      '';
+      ''
+      else ''
+        ${subOpts.extraConfig}
 
-  settingsFormat = pkgs.formats.json { };
+        redir /${subOpts.subDirName} /${subOpts.subDirName}/
+        reverse_proxy /${subOpts.subDirName}/* {
+          to ${subOpts.reverseProxy}
+        }
+      ''
+    );
+
+  mkSubDomainConf = hostName: subOpts: ''
+    @${subOpts.subDomainName} host ${subOpts.subDomainName}.${hostName}
+    handle @${subOpts.subDomainName} {
+      ${subOpts.extraConfig}
+      ${optionalString (subOpts.reverseProxy != null) "reverse_proxy ${subOpts.reverseProxy}"}
+
+      ${concatMapStringsSep "\n" mkSubDirConf (attrValues subOpts.subDirectories)}
+    }
+  '';
+
+  mkVHostConf = hostOpts: let
+    sslCertDir = config.security.acme.certs.${hostOpts.useACMEHost}.directory;
+  in ''
+    ${hostOpts.hostName} ${concatStringsSep " " hostOpts.serverAliases} {
+      ${optionalString (hostOpts.listenAddresses != []) "bind ${concatStringsSep " " hostOpts.listenAddresses}"}
+      ${optionalString (hostOpts.useACMEHost != null) "tls ${sslCertDir}/cert.pem ${sslCertDir}/key.pem"}
+      log {
+        ${hostOpts.logFormat}
+      }
+
+      ${hostOpts.extraConfig}
+      ${optionalString (hostOpts.reverseProxy != null) "reverse_proxy ${hostOpts.reverseProxy}"}
+      ${concatMapStringsSep "\n" mkSubDirConf (attrValues hostOpts.subDirectories)}
+      ${concatMapStringsSep "\n" (mkSubDomainConf hostOpts.hostName) (attrValues hostOpts.subDomains)}
+    }
+  '';
+
+  settingsFormat = pkgs.formats.json {};
 
   configFile =
-    if cfg.settings != { } then
-      settingsFormat.generate "caddy.json" cfg.settings
-    else
-      let
-        Caddyfile = pkgs.writeTextDir "Caddyfile" ''
-          {
-            ${cfg.globalConfig}
-          }
-          ${cfg.extraConfig}
-          ${concatMapStringsSep "\n" mkVHostConf virtualHosts}
-        '';
+    if cfg.settings != {}
+    then settingsFormat.generate "caddy.json" cfg.settings
+    else let
+      Caddyfile = pkgs.writeTextDir "Caddyfile" ''
+        {
+          ${cfg.globalConfig}
+        }
+        ${cfg.extraConfig}
+        ${concatMapStringsSep "\n" mkVHostConf (attrValues cfg.virtualHosts)}
+      '';
 
-        Caddyfile-formatted = pkgs.runCommand "Caddyfile-formatted" { nativeBuildInputs = [ cfg.package ]; } ''
-          mkdir -p $out
-          cp --no-preserve=mode ${Caddyfile}/Caddyfile $out/Caddyfile
-          caddy fmt --overwrite $out/Caddyfile
-        '';
-      in
-      "${if pkgs.stdenv.buildPlatform == pkgs.stdenv.hostPlatform then Caddyfile-formatted else Caddyfile}/Caddyfile";
+      Caddyfile-formatted = pkgs.runCommand "Caddyfile-formatted" {nativeBuildInputs = [cfg.package];} ''
+        mkdir -p $out
+        cp --no-preserve=mode ${Caddyfile}/Caddyfile $out/Caddyfile
+        caddy fmt --overwrite $out/Caddyfile
+      '';
+    in "${
+      if pkgs.stdenv.buildPlatform == pkgs.stdenv.hostPlatform
+      then Caddyfile-formatted
+      else Caddyfile
+    }/Caddyfile";
 
   etcConfigFile = "caddy/caddy_config";
 
@@ -68,16 +96,15 @@ let
   acmeHosts = unique (catAttrs "useACMEHost" acmeVHosts);
 
   mkCertOwnershipAssertion = import (inputs.nixpkgs + /nixos/modules/security/acme/mk-cert-ownership-assertion.nix);
-in
-{
+in {
   disabledModules = [
     (inputs.nixpkgs + /nixos/modules/services/web-servers/caddy/default.nix)
   ];
 
   imports = [
-    (mkRemovedOptionModule [ "services" "caddy" "agree" ] "this option is no longer necessary for Caddy 2")
-    (mkRenamedOptionModule [ "services" "caddy" "ca" ] [ "services" "caddy" "acmeCA" ])
-    (mkRenamedOptionModule [ "services" "caddy" "config" ] [ "services" "caddy" "extraConfig" ])
+    (mkRemovedOptionModule ["services" "caddy" "agree"] "this option is no longer necessary for Caddy 2")
+    (mkRenamedOptionModule ["services" "caddy" "ca"] ["services" "caddy" "acmeCA"])
+    (mkRenamedOptionModule ["services" "caddy" "config"] ["services" "caddy" "extraConfig"])
   ];
 
   # interface
@@ -189,7 +216,10 @@ in
     };
 
     adapter = mkOption {
-      default = if (builtins.baseNameOf cfg.configFile) == "Caddyfile" then "caddyfile" else null;
+      default =
+        if (builtins.baseNameOf cfg.configFile) == "Caddyfile"
+        then "caddyfile"
+        else null;
       defaultText = literalExpression ''
         if (builtins.baseNameOf cfg.configFile) == "Caddyfile" then "caddyfile" else null
       '';
@@ -259,7 +289,7 @@ in
     };
 
     virtualHosts = mkOption {
-      type = with types; attrsOf (submodule (import ./vhost-options.nix { inherit cfg; }));
+      type = with types; attrsOf (submodule (import ./vhost-options.nix {inherit cfg;}));
       default = {};
       example = literalExpression ''
         {
@@ -348,16 +378,20 @@ in
 
   # implementation
   config = mkIf cfg.enable {
-
-    assertions = [
-      { assertion = cfg.configFile == configFile -> cfg.adapter == "caddyfile" || cfg.adapter == null;
-        message = "To specify an adapter other than 'caddyfile' please provide your own configuration via `services.caddy.configFile`";
-      }
-    ] ++ map (name: mkCertOwnershipAssertion {
-      inherit (cfg) group user;
-      cert = config.security.acme.certs.${name};
-      groups = config.users.groups;
-    }) acmeHosts;
+    assertions =
+      [
+        {
+          assertion = cfg.configFile == configFile -> cfg.adapter == "caddyfile" || cfg.adapter == null;
+          message = "To specify an adapter other than 'caddyfile' please provide your own configuration via `services.caddy.configFile`";
+        }
+      ]
+      ++ map (name:
+        mkCertOwnershipAssertion {
+          inherit (cfg) group user;
+          cert = config.security.acme.certs.${name};
+          groups = config.users.groups;
+        })
+      acmeHosts;
 
     services.caddy.globalConfig = ''
       ${optionalString (cfg.email != null) "email ${cfg.email}"}
@@ -370,13 +404,13 @@ in
     # https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size
     boot.kernel.sysctl."net.core.rmem_max" = mkDefault 2500000;
 
-    systemd.packages = [ cfg.package ];
+    systemd.packages = [cfg.package];
     systemd.services.caddy = {
       wants = map (hostOpts: "acme-finished-${hostOpts.useACMEHost}.target") acmeVHosts;
       after = map (hostOpts: "acme-selfsigned-${hostOpts.useACMEHost}.service") acmeVHosts;
       before = map (hostOpts: "acme-${hostOpts.useACMEHost}.service") acmeVHosts;
 
-      wantedBy = [ "multi-user.target" ];
+      wantedBy = ["multi-user.target"];
       startLimitIntervalSec = 14400;
       startLimitBurst = 10;
       reloadTriggers = optional cfg.enableReload cfg.configFile;
@@ -386,14 +420,14 @@ in
       in {
         # https://www.freedesktop.org/software/systemd/man/systemd.service.html#ExecStart=
         # If the empty string is assigned to this option, the list of commands to start is reset, prior assignments of this option will have no effect.
-        ExecStart = [ "" ''${cfg.package}/bin/caddy run ${runOptions} ${optionalString cfg.resume "--resume"}'' ];
+        ExecStart = ["" ''${cfg.package}/bin/caddy run ${runOptions} ${optionalString cfg.resume "--resume"}''];
         # Validating the configuration before applying it ensures we’ll get a proper error that will be reported when switching to the configuration
-        ExecReload = [ "" ''${cfg.package}/bin/caddy reload ${runOptions} --force'' ];
+        ExecReload = ["" ''${cfg.package}/bin/caddy reload ${runOptions} --force''];
         User = cfg.user;
         Group = cfg.group;
         ReadWriteDirectories = cfg.dataDir;
-        StateDirectory = mkIf (cfg.dataDir == "/var/lib/caddy") [ "caddy" ];
-        LogsDirectory = mkIf (cfg.logDir == "/var/log/caddy") [ "caddy" ];
+        StateDirectory = mkIf (cfg.dataDir == "/var/lib/caddy") ["caddy"];
+        LogsDirectory = mkIf (cfg.logDir == "/var/log/caddy") ["caddy"];
         Restart = "on-failure";
         RestartPreventExitStatus = 1;
         RestartSec = "5s";
@@ -417,14 +451,15 @@ in
       caddy.gid = config.ids.gids.caddy;
     };
 
-    security.acme.certs =
-      let
-        certCfg = map (useACMEHost: nameValuePair useACMEHost {
+    security.acme.certs = let
+      certCfg = map (useACMEHost:
+        nameValuePair useACMEHost {
           group = mkDefault cfg.group;
-          reloadServices = [ "caddy.service" ];
-        }) acmeHosts;
-      in
-        listToAttrs certCfg;
+          reloadServices = ["caddy.service"];
+        })
+      acmeHosts;
+    in
+      listToAttrs certCfg;
 
     environment.etc.${etcConfigFile}.source = cfg.configFile;
   };

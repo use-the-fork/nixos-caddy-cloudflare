@@ -78,13 +78,35 @@ in
       default = {};
       example = literalExpression ''
         {
-          headscale.extraConfig = '''
-            reverse_proxy localhost:8085
-          ''';
+          headscale = {
+            reverseProxy = "localhost:8080";
+            extraConfig = '''
+              encode gzip
+            ''';
+          }
         };
       '';
       description = lib.mdDoc ''
         Declarative specification of a virtual hosts subdomain served by Caddy.
+      '';
+    };
+
+    subDirectories = mkOption {
+      type = with types; attrsOf (submodule (import ./sub-dir-options.nix { inherit cfg; }));
+      default = {};
+      example = literalExpression ''
+        {
+          headscale = {
+            appSupport = false;
+            reverseProxy = "localhost:8080";
+            extraConfig = '''
+              encode gzip
+            ''';
+          };
+        };
+      '';
+      description = lib.mdDoc ''
+        Declarative specification of a subdomain's subdirectories served by Caddy.
       '';
     };
 

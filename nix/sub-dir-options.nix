@@ -1,14 +1,14 @@
 { cfg }:
 { config, lib, name, ... }:
 let
-  inherit (lib) literalExpression mkOption types;
+  inherit (lib) mkOption types;
 in {
   options = {
 
-    subDomainName = mkOption {
+    subDirName = mkOption {
       type = types.str;
       default = name;
-      description = lib.mdDoc "The sub domain name to handle.";
+      description = lib.mdDoc "The sub directory name to handle.";
     };
 
     reverseProxy = mkOption {
@@ -20,22 +20,13 @@ in {
       '';
     };
 
-    subDirectories = mkOption {
-      type = with types; attrsOf (submodule (import ./sub-dir-options.nix { inherit cfg; }));
-      default = {};
-      example = literalExpression ''
-        {
-          headscale = {
-            appSupport = false;
-            reverseProxy = "localhost:8080";
-            extraConfig = '''
-              encode gzip
-            ''';
-          };
-        };
-      '';
+    experimental = mkOption {
+      type = types.bool;
+      default = false;
       description = lib.mdDoc ''
-        Declarative specification of a subdomain's subdirectories served by Caddy.
+        Specify if the app being proxied expects to be under a subdirectory.
+        If it doesn't, we can attempt to circumvent that but it is not guaranteed
+        to work for every app.
       '';
     };
 
