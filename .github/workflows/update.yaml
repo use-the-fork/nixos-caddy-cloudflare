@@ -1,0 +1,15 @@
+name: "Update"
+on:
+  schedule:
+    - cron: '0 7 * * *'
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: setup-nix
+      uses: cachix/install-nix-action@v22
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: update
+      run: nix develop -c ./update.sh

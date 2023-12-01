@@ -20,6 +20,7 @@
     forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system;});
   in {
+    # output of 'nix build'
     packages = forAllSystems (system: let
       pkgs = nixpkgsFor.${system};
     in {
@@ -28,11 +29,25 @@
         inherit version;
         src = ./caddy-src;
         runVend = true;
-        vendorHash = "sha256-fgr64f1wOreFrMTAMnYTkaqAfrcG0tme4J3YVawoks0=";
+        vendorHash = "sha256-0LOs/d/wQVzPfLUsgOQ0ESGbpa3w39fsZ3EXy3jXLc4=";
       };
       default = self.packages.${system}.caddy;
     });
 
+    # Default module
     nixosModules.default = import ./nix inputs;
+
+    # output of 'nix develop'
+    devShells = forAllSystems (system: let
+      pkgs = nixpkgsFor.${system};
+    in {
+      default = pkgs.mkShell {
+        nativeBuildInputs = with pkgs; [
+          nix
+          git
+          go_1_20
+        ];
+      };
+    });
   };
 }
