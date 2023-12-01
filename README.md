@@ -10,8 +10,7 @@ The `xcaddy` utility is not suited for deployment on NixOS where a sandboxed,
 reproducible build is required.
 
 This flake compiles caddy from a custom `main.go` file as outlined above.
-Currently adding the popular [caddy-security](https://authp.github.io/) as an
-example. The `caddy` package of this flake's  output will be caddy with that
+Currently adding the cloudflare dns plugin. The `caddy` package of this flake's  output will be caddy with that
 plugin baked in.
 
 To modify/add plugins:
