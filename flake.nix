@@ -17,13 +17,14 @@
       "aarch64-darwin"
     ];
 
-    forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-    nixpkgsFor = forAllSystems (system: import nixpkgs {inherit system;});
+    perSystem = attrs:
+      nixpkgs.lib.genAttrs supportedSystems (system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in
+        attrs system pkgs);
   in {
-    # output of 'nix build'
-    packages = forAllSystems (system: let
-      pkgs = nixpkgsFor.${system};
-    in {
+    # nix build
+    packages = perSystem (system: pkgs: {
       caddy = pkgs.buildGo120Module {
         pname = "caddy";
         inherit version;
@@ -37,10 +38,8 @@
     # Default module
     nixosModules.default = import ./nix inputs;
 
-    # output of 'nix develop'
-    devShells = forAllSystems (system: let
-      pkgs = nixpkgsFor.${system};
-    in {
+    # nix develop
+    devShells = perSystem (_: pkgs: {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
           nix
@@ -49,5 +48,7 @@
         ];
       };
     });
+
+    formatter = perSystem (_: pkgs: pkgs.alejandra);
   };
 }

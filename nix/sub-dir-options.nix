@@ -1,10 +1,12 @@
-{ cfg }:
-{ config, lib, name, ... }:
-let
+{cfg}: {
+  config,
+  lib,
+  name,
+  ...
+}: let
   inherit (lib) mkOption types;
 in {
   options = {
-
     subDirName = mkOption {
       type = types.str;
       default = name;
