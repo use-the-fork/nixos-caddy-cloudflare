@@ -21,7 +21,7 @@ To modify/add plugins:
 4. Run `nix build`
 
 You should get a result with the compiled caddy. To verify that the plugins
-where correctly added use:
+were correctly added use:
 
 ```
 ./result/bin/caddy list-modules  
