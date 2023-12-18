@@ -3,7 +3,7 @@ module caddy
 go 1.20
 
 require (
-	github.com/caddy-dns/cloudflare v0.0.0-20231018222540-737bf003fe8a
+	github.com/caddy-dns/cloudflare v0.0.0-20231217194038-7b8ded472344
 	github.com/caddyserver/caddy/v2 v2.7.6
 )
 
