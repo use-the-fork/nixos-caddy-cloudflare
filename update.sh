@@ -9,6 +9,7 @@ git_push() {
         git remote update
 
         git add flake.lock
+        git add flake.nix
         git add caddy-src
 
         git commit -m "ci: caddy and deps bumped"

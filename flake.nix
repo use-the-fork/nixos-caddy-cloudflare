@@ -30,7 +30,7 @@
         inherit version;
         src = ./caddy-src;
         runVend = true;
-        vendorHash = "sha256-0LOs/d/wQVzPfLUsgOQ0ESGbpa3w39fsZ3EXy3jXLc4=";
+        vendorHash = "sha256-ZtIoZA+IZJdfwk6fNLpmE/oRJxvEFbu3Rfk5r5Y7LQk=";
       };
       default = self.packages.${system}.caddy;
     });
