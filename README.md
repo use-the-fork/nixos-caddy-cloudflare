@@ -34,5 +34,21 @@ You should see the non-standard modules you added above this line at the end:
 ```
 
 
-## TODO
-- cachix build
+## Cachix
+To make use of this repository's cachix binary cache, you can follow the
+instructions at this [link](https://app.cachix.org/cache/caddycf#pull),
+or add these to your nix configuration:
+
+```nix
+{
+  nix.settings = {
+    substituters = [
+      "https://caddycf.cachix.org"
+    ];
+
+    trusted-public-keys = [
+      "caddycf.cachix.org-1:6vbQaeiec/zKv9XfEwi9yWVCe7opbeJMu6w81UEXugY="
+    ];
+  };
+}
+```
