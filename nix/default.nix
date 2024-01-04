@@ -436,7 +436,7 @@ in {
         NoNewPrivileges = true;
         PrivateDevices = true;
         ProtectHome = true;
-        AmbientCapabilities = "CAP_NET_BIND_SERVICE";
+        AmbientCapabilities = "CAP_NET_BIND_SERVICE CAP_NET_ADMIN";
       };
     };
 
