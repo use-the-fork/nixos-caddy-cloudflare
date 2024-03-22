@@ -25,26 +25,24 @@
   in {
     # nix build
     packages = perSystem (system: pkgs: {
-      caddy = pkgs.buildGo120Module {
+      caddy = pkgs.buildGoModule {
         pname = "caddy";
         inherit version;
         src = ./caddy-src;
         runVend = true;
-        vendorHash = "sha256-aBJUUC+k3EIRqOtr59k82g/gXXvnQo5NV/QGMuiiK+w=";
+        vendorHash = "sha256-CvyQQNzdWn10AH9ekCVdbgQbYSv06ICl3Q9VYngT3Q4=";
       };
       default = self.packages.${system}.caddy;
     });
 
     # Default module
-    nixosModules.default = import ./nix inputs;
+    nixosModules.default = import ./modules inputs;
 
     # nix develop
     devShells = perSystem (_: pkgs: {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          nix
-          git
-          go_1_20
+          go
         ];
       };
     });
