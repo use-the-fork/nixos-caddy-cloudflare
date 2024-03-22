@@ -12,7 +12,7 @@ git_push() {
         git add flake.nix
         git add caddy-src
 
-        git commit -m "ci: caddy and deps bumped"
+        git commit -m "$1"
         git push
     )
 }
@@ -36,8 +36,9 @@ git_push() {
 
         sed -i "s#vendorHash.*#vendorHash = \"$NEW_VENDOR_HASH\";#" ../flake.nix
 
-        git_push
+        git_push "ci: caddy and deps bumped"
     else
         echo "Up to date"
+        git_push "chore: update flake.nix"
     fi
 )
