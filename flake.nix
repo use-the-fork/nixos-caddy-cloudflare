@@ -6,10 +6,8 @@
   outputs = inputs @ {
     self,
     nixpkgs,
+    ...
   }: let
-    lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
-    version = builtins.substring 0 8 lastModifiedDate;
-
     supportedSystems = [
       "x86_64-linux"
       "x86_64-darwin"
@@ -25,13 +23,7 @@
   in {
     # nix build
     packages = perSystem (system: pkgs: {
-      caddy = pkgs.buildGoModule {
-        pname = "caddy";
-        inherit version;
-        src = ./caddy-src;
-        runVend = true;
-        vendorHash = "sha256-P5j2Lo5QZdxFyHdfUIozwlxDZ4PiwT/fOwn7f4MZPFQ=";
-      };
+      caddy = pkgs.callPackage ./nix {};
       default = self.packages.${system}.caddy;
     });
 
