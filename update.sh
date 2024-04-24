@@ -1,5 +1,4 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash -p common-updater-scripts git go jq nix-prefetch-github
+#!/usr/bin/env -S nix shell -I nixpkgs=./. nixpkgs#bash nixpkgs#common-updater-scripts nixpkgs#git nixpkgs#go nixpkgs#jq nixpkgs#nix-prefetch-github -c bash
 
 ROOT_DIR="$(pwd)"
 
