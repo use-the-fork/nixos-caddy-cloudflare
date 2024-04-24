@@ -30,15 +30,6 @@
     # Default module
     nixosModules.default = import ./modules inputs;
 
-    # nix develop
-    devShells = perSystem (_: pkgs: {
-      default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [
-          go
-        ];
-      };
-    });
-
     formatter = perSystem (_: pkgs: pkgs.alejandra);
   };
 }
