@@ -12,6 +12,7 @@ git_push() {
         git add flake.lock
         git add flake.nix
         git add caddy-src
+        git add nix/info.nix
 
         git commit -m "$1"
         git push
