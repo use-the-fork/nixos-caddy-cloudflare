@@ -10,7 +10,7 @@
   info = import ./info.nix;
   dist = fetchFromGitHub info.dist;
 
-  caddy-version =  removePrefix "v" info.version;
+  caddy-version = removePrefix "v" info.version;
   cloudflare-version-string = splitString "-" (removePrefix "v" info.cfVersion);
   cloudflare-version = elemAt cloudflare-version-string 0 + "+" + elemAt cloudflare-version-string 2;
 in
@@ -18,7 +18,7 @@ in
     pname = "caddy-with-plugins";
     version = caddy-version + "-" + cloudflare-version;
 
-    src = ../caddy-src;
+    src = ../src;
 
     runVend = true;
     inherit (info) vendorHash;

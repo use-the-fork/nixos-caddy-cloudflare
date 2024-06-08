@@ -1,4 +1,4 @@
-#!/usr/bin/env -S nix shell -I nixpkgs=./. nixpkgs#bash nixpkgs#common-updater-scripts nixpkgs#git nixpkgs#go nixpkgs#jq nixpkgs#nix-prefetch-github nixpkgs#nix-prefetch-git nixpkgs#nix-prefetch-scripts -c bash
+#!/usr/bin/env -S nix develop .#update -c bash
 
 ROOT_DIR="$(pwd)"
 
@@ -9,19 +9,22 @@ git_push() {
         git config --global user.email 'robot@nowhere.invalid'
         git remote update
 
-        git add flake.lock
-        git add flake.nix
-        git add caddy-src
-        git add nix/info.nix
+        alejandra .
+        git add .
 
         git commit -m "$1"
         git push
     )
 }
 
+updateFlakeLock() {
+    nix flake update
+    git_push "chore: update flake.lock"
+}
+
 updateInfo() {
-    version=$(sed -n 's#.*github.com/caddyserver/caddy/v2 \(.*\)#\1#p' "$ROOT_DIR/caddy-src/go.mod")
-    cfVersion=$(sed -n 's#.*github.com/caddy-dns/cloudflare \(.*\)#\1#p' "$ROOT_DIR/caddy-src/go.mod")
+    version=$(sed -n 's#.*github.com/caddyserver/caddy/v2 \(.*\)#\1#p' "$ROOT_DIR/src/go.mod")
+    cfVersion=$(sed -n 's#.*github.com/caddy-dns/cloudflare \(.*\)#\1#p' "$ROOT_DIR/src/go.mod")
     dist_hash=$(nix-prefetch-github caddyserver dist --rev "$version" | jq -r .hash)
 
     {
@@ -37,13 +40,14 @@ updateInfo() {
         echo "    hash = \"$dist_hash\";"
         echo "  };"
         echo '}'
-    } >"$ROOT_DIR/nix/info.nix"
+    } >"$ROOT_DIR/pkgs/info.nix"
 }
 
-(
-    nix flake update
+updateGoSources() {
+    current_version=$(nix eval --json --file ./pkgs/info.nix | jq -r .version)
+    current_cf=$(nix eval --json --file ./pkgs/info.nix | jq -r .cfVersion)
 
-    cd ./caddy-src || return
+    cd ./src || return
     old_hash="$(sha256sum ./go.sum)"
 
     rm go*
@@ -55,12 +59,26 @@ updateInfo() {
     if [ "$old_hash" != "$new_hash" ]; then
         updateInfo ""
         new_vendor_hash="$(nix build ../.# |& sed -n 's/.*got: *//p')"
-
         updateInfo "$new_vendor_hash"
 
-        git_push "ci: caddy and deps bumped"
-    else
-        echo "Up to date"
-        git_push "chore: update flake.lock"
+        new_version=$(nix eval --json --file ../pkgs/info.nix | jq -r .version)
+        new_cf=$(nix eval --json --file ../pkgs/info.nix | jq -r .cfVersion)
+
+        commit_msg="ci: "
+
+        if [[ "$current_version" != "$new_version" ]]; then
+            commit_msg+="caddy $current_version -> $new_version"
+
+        elif [[ "$current_cf" != "$new_cf" ]]; then
+            commit_msg+="cloudflare-plugin $current_cf -> $new_cf"
+
+        else
+            commit_msg+="bump deps"
+        fi
+
+        git_push "$commit_msg"
     fi
-)
+}
+
+updateFlakeLock
+updateGoSources

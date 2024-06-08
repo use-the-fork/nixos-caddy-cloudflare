@@ -27,7 +27,7 @@
         attrs system nixpkgs.legacyPackages.${system});
   in {
     packages = perSystem (system: pkgs: {
-      caddy = pkgs.callPackage ./nix {};
+      caddy = pkgs.callPackage ./pkgs {};
 
       default = self.packages.${system}.caddy;
     });
@@ -39,5 +39,21 @@
     };
 
     formatter = perSystem (_: pkgs: pkgs.alejandra);
+
+    devShells = perSystem (_: pkgs: {
+      update = pkgs.mkShell {
+        packages = with pkgs; [
+          alejandra
+          bash
+          common-updater-scripts
+          git
+          go
+          jq
+          nix-prefetch-git
+          nix-prefetch-github
+          nix-prefetch-scripts
+        ];
+      };
+    });
   };
 }
