@@ -1,7 +1,14 @@
 {
   description = "Caddy with Cloudflare plugin and expanded module";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs = {
+      type = "github";
+      owner = "NixOS";
+      repo = "nixpkgs";
+      ref = "nixos-unstable";
+    };
+  };
 
   outputs = inputs @ {
     self,
@@ -16,19 +23,20 @@
     ];
 
     perSystem = attrs:
-      nixpkgs.lib.genAttrs supportedSystems (system: let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in
-        attrs system pkgs);
+      nixpkgs.lib.genAttrs supportedSystems (system:
+        attrs system nixpkgs.legacyPackages.${system});
   in {
-    # nix build
     packages = perSystem (system: pkgs: {
       caddy = pkgs.callPackage ./nix {};
+
       default = self.packages.${system}.caddy;
     });
 
-    # Default module
-    nixosModules.default = import ./modules inputs;
+    nixosModules = {
+      caddy = import ./modules inputs;
+
+      default = self.nixosModules.caddy;
+    };
 
     formatter = perSystem (_: pkgs: pkgs.alejandra);
   };
