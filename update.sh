@@ -1,20 +1,25 @@
 #!/usr/bin/env -S nix develop .#update -c bash
 
+COMMIT="$1"
 ROOT_DIR="$(pwd)"
 
 git_push() {
-    (
-        cd "$ROOT_DIR" || return
-        git config --global user.name 'Updater'
-        git config --global user.email 'robot@nowhere.invalid'
-        git remote update
+    if [[ "$COMMIT" == "--commit" ]]; then
+        (
+            cd "$ROOT_DIR" || return
+            git config --global user.name 'Updater'
+            git config --global user.email 'robot@nowhere.invalid'
+            git remote update
 
-        alejandra .
-        git add .
+            alejandra .
+            git add .
 
-        git commit -m "$1"
-        git push
-    )
+            git commit -m "$1"
+            git push
+        )
+    else
+        echo "$1"
+    fi
 }
 
 updateFlakeLock() {
@@ -44,8 +49,8 @@ updateInfo() {
 }
 
 updateGoSources() {
-    current_version=$(nix eval --json --file ./pkgs/info.nix | jq -r .version)
-    current_cf=$(nix eval --json --file ./pkgs/info.nix | jq -r .cfVersion)
+    current_version=$(nix eval --json --file "$ROOT_DIR/pkgs/info.nix" | jq -r .version)
+    current_cf=$(nix eval --json --file "$ROOT_DIR/pkgs/info.nix" | jq -r .cfVersion)
 
     cd ./src || return
     old_hash="$(sha256sum ./go.sum)"
@@ -58,11 +63,11 @@ updateGoSources() {
 
     if [ "$old_hash" != "$new_hash" ]; then
         updateInfo ""
-        new_vendor_hash="$(nix build ../.# |& sed -n 's/.*got: *//p')"
+        new_vendor_hash="$(nix build "$ROOT_DIR"/.# |& sed -n 's/.*got: *//p')"
         updateInfo "$new_vendor_hash"
 
-        new_version=$(nix eval --json --file ../pkgs/info.nix | jq -r .version)
-        new_cf=$(nix eval --json --file ../pkgs/info.nix | jq -r .cfVersion)
+        new_version=$(nix eval --json --file "$ROOT_DIR/pkgs/info.nix" | jq -r .version)
+        new_cf=$(nix eval --json --file "$ROOT_DIR/pkgs/info.nix" | jq -r .cfVersion)
 
         commit_msg="ci: "
 
