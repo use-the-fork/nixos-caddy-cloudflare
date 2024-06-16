@@ -5,14 +5,11 @@
   lib,
   ...
 }: let
-  inherit (lib) elemAt removePrefix splitString;
-
   info = import ./info.nix;
   dist = fetchFromGitHub info.dist;
 
-  caddy-version = removePrefix "v" info.version;
-  cloudflare-version-string = splitString "-" (removePrefix "v" info.cfVersion);
-  cloudflare-version = elemAt cloudflare-version-string 0 + "+" + elemAt cloudflare-version-string 2;
+  caddy-version = info.version;
+  cloudflare-version = info.cfVersion;
 in
   buildGoModule {
     pname = "caddy-with-plugins";
@@ -45,10 +42,10 @@ in
         --zsh <($out/bin/caddy completion zsh)
     '';
 
-    meta = with lib; {
+    meta = {
       homepage = "https://caddyserver.com";
       description = "Fast and extensible multi-platform HTTP/1-2-3 web server with automatic HTTPS";
-      license = licenses.asl20;
+      license = lib.licenses.asl20;
       mainProgram = "caddy";
     };
   }
