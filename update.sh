@@ -22,11 +22,6 @@ git_push() {
     fi
 }
 
-updateFlakeLock() {
-    nix flake update
-    git_push "chore: update flake.lock"
-}
-
 sanitizeCfVer() {
     IFS='-' read -r -a split_version <<< "$1"
     echo "${split_version[0]}+${split_version[2]}"
@@ -71,6 +66,8 @@ updateGoSources() {
     new_hash="$(sha256sum ./go.sum)"
 
     if [ "$old_hash" != "$new_hash" ]; then
+        nix flake update
+
         updateInfo ""
         new_vendor_hash="$(nix build "$ROOT_DIR"/.# |& sed -n 's/.*got: *//p')"
         updateInfo "$new_vendor_hash"
@@ -94,5 +91,4 @@ updateGoSources() {
     fi
 }
 
-updateFlakeLock
 updateGoSources
