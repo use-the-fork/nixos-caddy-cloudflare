@@ -20,6 +20,14 @@ in
     runVend = true;
     inherit (info) vendorHash;
 
+    preBuild = ''
+      # Ensure go.mod and go.sum are updated
+      go mod tidy
+
+      # Synchronize the vendor directory
+      go mod vendor
+    '';
+
     # Everything past this point is from Nixpkgs
     ldflags = [
       "-s"
